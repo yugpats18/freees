@@ -10,16 +10,16 @@ const StatusBadge = ({ status }) => {
       case 'on trip':
       case 'dispatched':
       case 'on duty':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-accent/20 text-primary';
       case 'in shop':
       case 'draft':
         return 'bg-yellow-100 text-yellow-800';
       case 'retired':
       case 'cancelled':
       case 'suspended':
-        return 'bg-red-100 text-red-800';
+        return 'bg-secondary/20 text-secondary';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-light text-primary';
     }
   };
 

@@ -2,15 +2,39 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 // In-memory OTP storage (in production, use Redis or database)
 const otpStore = new Map();
+
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
+});
 
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    // Check if it's a driver login (license plate format without @)
+    let query;
+    let params;
+    
+    if (!email.includes('@')) {
+      // Driver login - search by license plate username
+      query = 'SELECT * FROM users WHERE email LIKE $1 AND role = $2';
+      params = [`${email}%@driver.fleet`, 'driver'];
+    } else {
+      // Regular email login
+      query = 'SELECT * FROM users WHERE email = $1';
+      params = [email];
+    }
+
+    const result = await pool.query(query, params);
     
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -68,15 +92,47 @@ const forgotPassword = async (req, res) => {
       expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
     });
 
-    // In production, send email here using nodemailer or similar
-    // For now, return OTP in response (ONLY FOR DEVELOPMENT)
-    console.log(`OTP for ${email}: ${otp}`);
-    
-    res.json({ 
-      message: 'OTP sent to email',
-      // Remove this in production:
-      otp: otp // ONLY FOR DEVELOPMENT - Remove in production!
-    });
+    // Send email with OTP
+    try {
+      await transporter.sendMail({
+        from: `"Fleet Management System" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Password Reset OTP - Fleet Management',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #3B82F6;">Password Reset Request</h2>
+            <p>You have requested to reset your password for Fleet Management System.</p>
+            <div style="background-color: #EFF6FF; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 14px; color: #666;">Your OTP is:</p>
+              <h1 style="margin: 10px 0; color: #3B82F6; font-size: 36px; letter-spacing: 8px;">${otp}</h1>
+            </div>
+            <p style="color: #666;">This OTP is valid for <strong>10 minutes</strong>.</p>
+            <p style="color: #666;">If you didn't request this, please ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">Fleet Management System</p>
+          </div>
+        `
+      });
+
+      console.log(`OTP sent to ${email}: ${otp}`); // Keep for development
+      
+      res.json({ 
+        message: 'OTP sent to your email',
+        // Remove otp from response in production
+        ...(process.env.NODE_ENV === 'development' && { otp })
+      });
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Still return OTP in development if email fails
+      if (process.env.NODE_ENV === 'development') {
+        res.json({ 
+          message: 'Email failed but OTP generated (dev mode)',
+          otp: otp
+        });
+      } else {
+        throw new Error('Failed to send email');
+      }
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

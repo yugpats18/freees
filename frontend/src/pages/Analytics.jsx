@@ -46,23 +46,23 @@ const Analytics = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Analytics & Reports</h1>
+        <h1 className="text-3xl font-bold text-primary">Analytics & Reports</h1>
         <div className="flex gap-3">
           <button
             onClick={() => handleExport('vehicles')}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors"
           >
             Export Vehicles CSV
           </button>
           <button
             onClick={() => handleExport('trips')}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors"
           >
             Export Trips CSV
           </button>
           <button
             onClick={() => handleExport('expenses')}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors"
           >
             Export Expenses CSV
           </button>
@@ -70,8 +70,8 @@ const Analytics = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold mb-4">Fuel Efficiency (km/L)</h2>
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-primary">
+          <h2 className="text-xl font-bold mb-4 text-primary">Fuel Efficiency (km/L)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={fuelEfficiency}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -79,13 +79,13 @@ const Analytics = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="fuel_efficiency" fill="#3B82F6" name="km/L" />
+              <Bar dataKey="fuel_efficiency" fill="#213448" name="km/L" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold mb-4">Vehicle ROI (%)</h2>
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-accent">
+          <h2 className="text-xl font-bold mb-4 text-primary">Vehicle ROI (%)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={vehicleROI}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -93,16 +93,16 @@ const Analytics = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="roi_percentage" fill="#10B981" name="ROI %" />
+              <Bar dataKey="roi_percentage" fill="#94B4C1" name="ROI %" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Fuel Efficiency Details</h2>
+        <h2 className="text-xl font-bold mb-4 text-primary">Fuel Efficiency Details</h2>
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-primary text-white">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-semibold">Vehicle</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">License Plate</th>
@@ -113,12 +113,12 @@ const Analytics = () => {
           </thead>
           <tbody>
             {fuelEfficiency.map((item) => (
-              <tr key={item.id} className="border-t">
+              <tr key={item.id} className="border-t hover:bg-light/30">
                 <td className="px-4 py-3">{item.model_name}</td>
                 <td className="px-4 py-3 font-mono">{item.license_plate}</td>
                 <td className="px-4 py-3">{parseFloat(item.total_fuel).toFixed(2)}</td>
                 <td className="px-4 py-3">{parseFloat(item.odometer).toFixed(2)}</td>
-                <td className="px-4 py-3 font-bold">{parseFloat(item.fuel_efficiency).toFixed(2)}</td>
+                <td className="px-4 py-3 font-bold text-primary">{parseFloat(item.fuel_efficiency).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -126,9 +126,9 @@ const Analytics = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold mb-4">Vehicle ROI Analysis</h2>
+        <h2 className="text-xl font-bold mb-4 text-primary">Vehicle ROI Analysis</h2>
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-primary text-white">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-semibold">Vehicle</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Revenue</th>
@@ -140,14 +140,14 @@ const Analytics = () => {
           </thead>
           <tbody>
             {vehicleROI.map((item) => (
-              <tr key={item.id} className="border-t">
+              <tr key={item.id} className="border-t hover:bg-light/30">
                 <td className="px-4 py-3">{item.model_name}</td>
-                <td className="px-4 py-3">${parseFloat(item.total_revenue).toFixed(2)}</td>
-                <td className="px-4 py-3">${parseFloat(item.fuel_cost).toFixed(2)}</td>
-                <td className="px-4 py-3">${parseFloat(item.maintenance_cost).toFixed(2)}</td>
-                <td className="px-4 py-3 font-bold">${parseFloat(item.net_profit).toFixed(2)}</td>
+                <td className="px-4 py-3 text-primary">₹{parseFloat(item.total_revenue).toFixed(2)}</td>
+                <td className="px-4 py-3">₹{parseFloat(item.fuel_cost).toFixed(2)}</td>
+                <td className="px-4 py-3">₹{parseFloat(item.maintenance_cost).toFixed(2)}</td>
+                <td className="px-4 py-3 font-bold text-primary">₹{parseFloat(item.net_profit).toFixed(2)}</td>
                 <td className="px-4 py-3">
-                  <span className={`font-bold ${parseFloat(item.roi_percentage) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`font-bold ${parseFloat(item.roi_percentage) >= 0 ? 'text-green-600' : 'text-secondary'}`}>
                     {parseFloat(item.roi_percentage).toFixed(2)}%
                   </span>
                 </td>

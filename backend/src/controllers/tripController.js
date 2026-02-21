@@ -156,9 +156,12 @@ const completeTrip = async (req, res) => {
     const { id } = req.params;
     const { odometer_reading } = req.body;
 
+    // Get trip and vehicle details
     const tripResult = await client.query(
-      `UPDATE trips SET status = 'Completed', completion_date = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1 AND status = 'Dispatched' RETURNING *`,
+      `SELECT t.*, v.odometer as current_odometer, v.id as vehicle_id
+       FROM trips t
+       JOIN vehicles v ON t.vehicle_id = v.id
+       WHERE t.id = $1 AND t.status = 'Dispatched'`,
       [id]
     );
 
@@ -167,6 +170,30 @@ const completeTrip = async (req, res) => {
     }
 
     const trip = tripResult.rows[0];
+    const currentOdometer = parseFloat(trip.current_odometer);
+    const newOdometer = parseFloat(odometer_reading);
+
+    // Validate odometer reading
+    if (newOdometer <= currentOdometer) {
+      throw new Error(`Odometer reading must be greater than current reading (${currentOdometer} km)`);
+    }
+
+    // Optional: Validate against trip distance (if distance is set)
+    if (trip.distance) {
+      const expectedMinOdometer = currentOdometer + parseFloat(trip.distance) * 0.8; // Allow 20% variance
+      const expectedMaxOdometer = currentOdometer + parseFloat(trip.distance) * 1.5; // Allow 50% extra
+      
+      if (newOdometer < expectedMinOdometer || newOdometer > expectedMaxOdometer) {
+        throw new Error(`Odometer reading (${newOdometer} km) seems incorrect for trip distance (${trip.distance} km). Expected range: ${expectedMinOdometer.toFixed(0)}-${expectedMaxOdometer.toFixed(0)} km`);
+      }
+    }
+
+    // Update trip status
+    await client.query(
+      `UPDATE trips SET status = 'Completed', completion_date = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [id]
+    );
 
     // Deactivate driver account
     if (trip.driver_user_id) {
@@ -176,14 +203,14 @@ const completeTrip = async (req, res) => {
     // Update vehicle status and odometer
     await client.query(
       `UPDATE vehicles SET status = 'Available', odometer = $1 WHERE id = $2`,
-      [odometer_reading, trip.vehicle_id]
+      [newOdometer, trip.vehicle_id]
     );
 
     // Update driver status
     await client.query(`UPDATE drivers SET status = 'Off Duty' WHERE id = $1`, [trip.driver_id]);
 
     await client.query('COMMIT');
-    res.json(tripResult.rows[0]);
+    res.json({ message: 'Trip completed successfully', odometer: newOdometer });
   } catch (error) {
     await client.query('ROLLBACK');
     res.status(400).json({ error: error.message });

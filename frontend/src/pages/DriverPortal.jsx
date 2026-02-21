@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { tripAPI } from '../services/api';
 import { getUser } from '../utils/auth';
-import { FiMapPin, FiPackage, FiDollarSign, FiNavigation } from 'react-icons/fi';
+import { FiMapPin, FiPackage, FiNavigation } from 'react-icons/fi';
+import InputModal from '../components/InputModal';
+import Modal from '../components/Modal';
 
 const DriverPortal = () => {
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [completing, setCompleting] = useState(false);
+  const [showOdometerModal, setShowOdometerModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const user = getUser();
 
   useEffect(() => {
@@ -24,19 +29,16 @@ const DriverPortal = () => {
     }
   };
 
-  const handleCompleteTrip = async () => {
-    const odometer = prompt('Enter final odometer reading (km):');
-    if (!odometer) return;
-
-    setCompleting(true);
+  const handleCompleteTrip = async (odometerReading) => {
     try {
-      await tripAPI.complete(trip.id, { odometer_reading: parseFloat(odometer) });
-      alert('Trip completed successfully! Your account will be deactivated. Thank you for your service.');
-      window.location.href = '/login';
+      await tripAPI.complete(trip.id, { odometer_reading: parseFloat(odometerReading) });
+      setShowSuccessModal(true);
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to complete trip');
-    } finally {
-      setCompleting(false);
+      setErrorMessage(error.response?.data?.error || 'Failed to complete trip');
+      setShowErrorModal(true);
     }
   };
 
@@ -138,10 +140,12 @@ const DriverPortal = () => {
 
             <div className="bg-green-50 p-4 rounded-lg">
               <div className="flex items-center gap-3">
-                <FiDollarSign size={20} className="text-green-600" />
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 <div>
                   <p className="text-sm text-gray-600">Your Earnings</p>
-                  <p className="text-xl font-bold text-green-600">${parseFloat(trip.driver_earnings || 0).toFixed(2)}</p>
+                  <p className="text-xl font-bold text-green-600">₹{parseFloat(trip.driver_earnings || 0).toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -159,11 +163,10 @@ const DriverPortal = () => {
           {/* Complete Trip Button */}
           {trip.status === 'Dispatched' && (
             <button
-              onClick={handleCompleteTrip}
-              disabled={completing}
-              className="w-full bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 text-lg font-semibold"
+              onClick={() => setShowOdometerModal(true)}
+              className="w-full bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 transition-colors text-lg font-semibold"
             >
-              {completing ? 'Completing...' : 'Mark Trip as Complete'}
+              Mark Trip as Complete
             </button>
           )}
         </div>
@@ -207,6 +210,38 @@ const DriverPortal = () => {
             Make sure you've reached your destination before completing the trip.
           </p>
         </div>
+
+        {/* Odometer Input Modal */}
+        <InputModal
+          isOpen={showOdometerModal}
+          onClose={() => setShowOdometerModal(false)}
+          onSubmit={handleCompleteTrip}
+          title="Complete Trip"
+          label="Enter Final Odometer Reading (km)"
+          placeholder="e.g., 15250"
+          type="number"
+        />
+
+        {/* Success Modal */}
+        <Modal
+          isOpen={showSuccessModal}
+          onClose={() => {}}
+          title="Trip Completed!"
+          type="success"
+        >
+          <p>Thank you for your service!</p>
+          <p className="mt-2">Your account will be deactivated and you will be logged out.</p>
+        </Modal>
+
+        {/* Error Modal */}
+        <Modal
+          isOpen={showErrorModal}
+          onClose={() => setShowErrorModal(false)}
+          title="Error"
+          type="error"
+        >
+          {errorMessage}
+        </Modal>
       </div>
     </div>
   );
