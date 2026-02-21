@@ -1,0 +1,267 @@
+import React, { useState, useEffect } from 'react';
+import { vehicleAPI } from '../services/api';
+import { hasRole, ROLES } from '../utils/auth';
+import StatusBadge from '../components/StatusBadge';
+
+const Vehicles = () => {
+  const [vehicles, setVehicles] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [formData, setFormData] = useState({
+    model_name: '',
+    license_plate: '',
+    vehicle_type: 'Truck',
+    max_load_capacity: '',
+    region: '',
+    acquisition_cost: '',
+    odometer: 0,
+    status: 'Available'
+  });
+
+  const canManage = hasRole([ROLES.FLEET_MANAGER]);
+
+  useEffect(() => {
+    fetchVehicles();
+  }, []);
+
+  const fetchVehicles = async () => {
+    try {
+      const response = await vehicleAPI.getAll();
+      setVehicles(response.data);
+    } catch (error) {
+      console.error('Failed to fetch vehicles:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingVehicle) {
+        await vehicleAPI.update(editingVehicle.id, formData);
+      } else {
+        await vehicleAPI.create(formData);
+      }
+      setShowModal(false);
+      setEditingVehicle(null);
+      resetForm();
+      fetchVehicles();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Operation failed');
+    }
+  };
+
+  const handleRetire = async (id) => {
+    if (window.confirm('Are you sure you want to retire this vehicle?')) {
+      try {
+        await vehicleAPI.retire(id);
+        fetchVehicles();
+      } catch (error) {
+        alert(error.response?.data?.error || 'Failed to retire vehicle');
+      }
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this vehicle?')) {
+      try {
+        await vehicleAPI.delete(id);
+        fetchVehicles();
+      } catch (error) {
+        alert(error.response?.data?.error || 'Failed to delete vehicle');
+      }
+    }
+  };
+
+  const openEditModal = (vehicle) => {
+    setEditingVehicle(vehicle);
+    setFormData(vehicle);
+    setShowModal(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      model_name: '',
+      license_plate: '',
+      vehicle_type: 'Truck',
+      max_load_capacity: '',
+      region: '',
+      acquisition_cost: '',
+      odometer: 0,
+      status: 'Available'
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Vehicle Registry</h1>
+        {canManage && (
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-blue-600"
+          >
+            Add Vehicle
+          </button>
+        )}
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Model</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">License Plate</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Type</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Max Capacity</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Odometer</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
+              {canManage && <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {vehicles.map((vehicle) => (
+              <tr key={vehicle.id} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-3">{vehicle.model_name}</td>
+                <td className="px-4 py-3 font-mono">{vehicle.license_plate}</td>
+                <td className="px-4 py-3">{vehicle.vehicle_type}</td>
+                <td className="px-4 py-3">{vehicle.max_load_capacity} kg</td>
+                <td className="px-4 py-3">{vehicle.odometer} km</td>
+                <td className="px-4 py-3"><StatusBadge status={vehicle.status} /></td>
+                {canManage && (
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => openEditModal(vehicle)}
+                      className="text-blue-600 hover:underline mr-3"
+                    >
+                      Edit
+                    </button>
+                    {vehicle.status !== 'Retired' && (
+                      <button
+                        onClick={() => handleRetire(vehicle.id)}
+                        className="text-yellow-600 hover:underline mr-3"
+                      >
+                        Retire
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(vehicle.id)}
+                      className="text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4">
+              {editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
+            </h2>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Model Name</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={formData.model_name}
+                  onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">License Plate</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={formData.license_plate}
+                  onChange={(e) => setFormData({ ...formData, license_plate: e.target.value })}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Vehicle Type</label>
+                <select
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={formData.vehicle_type}
+                  onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })}
+                >
+                  <option value="Truck">Truck</option>
+                  <option value="Van">Van</option>
+                  <option value="Bike">Bike</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Max Load Capacity (kg)</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={formData.max_load_capacity}
+                  onChange={(e) => setFormData({ ...formData, max_load_capacity: e.target.value })}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Region</label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={formData.region}
+                  onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                />
+              </div>
+              {editingVehicle && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold mb-2">Odometer (km)</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-2 border rounded-lg"
+                      value={formData.odometer}
+                      onChange={(e) => setFormData({ ...formData, odometer: e.target.value })}
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold mb-2">Status</label>
+                    <select
+                      className="w-full px-4 py-2 border rounded-lg"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    >
+                      <option value="Available">Available</option>
+                      <option value="On Trip">On Trip</option>
+                      <option value="In Shop">In Shop</option>
+                      <option value="Retired">Retired</option>
+                    </select>
+                  </div>
+                </>
+              )}
+              <div className="flex gap-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-blue-600"
+                >
+                  {editingVehicle ? 'Update' : 'Create'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowModal(false); setEditingVehicle(null); }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Vehicles;
